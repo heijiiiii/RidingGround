@@ -1,0 +1,15 @@
+{
+  "short_name": "Riding Ground",
+  "name": "라이딩 그라운드 - 감정을 따라 달리는 자전거길",
+  "icons": [
+    {
+      "src": "bike.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#8572FF",
+  "background_color": "#ffffff"
+} 
