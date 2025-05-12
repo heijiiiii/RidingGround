@@ -615,8 +615,8 @@ const getEmotionLabel = (emotionIdOrName, emotions) => {
   return defaultLabel;
 };
 
-// 인기 라이딩 코스 하드코딩 (3개)
-const popularCourses = useMemo(() => [
+// 인기 라이딩 코스를 상수로 변경 (useMemo 제거)
+const POPULAR_COURSES_DATA = [
   {
     id: 'popular-1',
     title: '한강 자전거 도로',
@@ -644,7 +644,7 @@ const popularCourses = useMemo(() => [
     emotion: 'joy',
     image: FlowerImg
   }
-], [HangangImg, SanImg, FlowerImg]);
+];
 
 const EmotionMapSection = ({ selectedEmotions }) => {
   // 감정별 코스 데이터
@@ -690,11 +690,8 @@ const EmotionMapSection = ({ selectedEmotions }) => {
   // 기본 거리값 설정 (거리 필터 옵션 삭제)
   const defaultDistance = 5; // 5km로 고정
 
-  // 인기 코스 - Supabase에서 가져온 데이터에서 첫 3개를 사용
-  const popularCourses = useMemo(() => {
-    // 데이터가 있을 경우 처음 3개만 사용
-    return coursesData.slice(0, 3);
-  }, [coursesData]);
+  // 인기 코스 데이터를 컴포넌트 내부로 이동하여 useMemo 사용
+  const popularCourses = useMemo(() => POPULAR_COURSES_DATA, []);
 
   // 부모 컴포넌트에서 전달된 감정 데이터 처리
   useEffect(() => {
@@ -854,6 +851,38 @@ const EmotionMapSection = ({ selectedEmotions }) => {
       return;
     }
 
+    // 위치 정보 접근 오류 처리 함수 정의
+    const handleLocationError = (error) => {
+      console.error("위치 정보 가져오기 오류:", error.message);
+      
+      // 기본 위치(송파구) 설정
+      setUserLocation({ lat: 37.5145, lng: 127.1007 });
+      
+      // 오류 타입별 처리
+      switch(error.code) {
+        case error.PERMISSION_DENIED:
+          console.log("위치 정보 접근 권한이 거부되었습니다. HTTP 환경이나 권한 설정을 확인하세요.");
+          break;
+        case error.POSITION_UNAVAILABLE:
+          console.log("위치 정보를 사용할 수 없습니다.");
+          break;
+        case error.TIMEOUT:
+          console.log("위치 정보 요청 시간이 초과되었습니다.");
+          break;
+        case error.UNKNOWN_ERROR:
+        default:
+          console.log("알 수 없는 위치 정보 오류가 발생했습니다.");
+          break;
+      }
+    };
+    
+    // 위치 정보 접근 성공 처리 함수 정의
+    const handleLocationSuccess = (position) => {
+      const { latitude, longitude } = position.coords;
+      console.log(`현재 위치 가져오기 성공: 위도(${latitude}), 경도(${longitude})`);
+      setUserLocation({ lat: latitude, lng: longitude });
+    };
+
     try {
       // 지도 생성
       const options = {
@@ -884,76 +913,6 @@ const EmotionMapSection = ({ selectedEmotions }) => {
     } catch (error) {
       console.error("카카오맵 초기화 오류:", error);
       setMapError(true);
-    }
-  }, []);
-
-  // 현재 위치 가져오기
-  useEffect(() => {
-    // 위치 정보 가져오기 실패 시 기본 위치
-    const defaultLocation = { lat: 37.5145, lng: 127.1007 }; // 송파구 좌표
-    
-    // 위치 정보 접근 오류 처리 함수
-    const handleLocationError = (error) => {
-      console.error("위치 정보 가져오기 오류:", error.message);
-      
-      // 기본 위치(송파구) 설정
-      setUserLocation(defaultLocation);
-      
-      // 오류 타입별 처리
-      switch(error.code) {
-        case error.PERMISSION_DENIED:
-          console.log("위치 정보 접근 권한이 거부되었습니다. HTTP 환경이나 권한 설정을 확인하세요.");
-          break;
-        case error.POSITION_UNAVAILABLE:
-          console.log("위치 정보를 사용할 수 없습니다.");
-          break;
-        case error.TIMEOUT:
-          console.log("위치 정보 요청 시간이 초과되었습니다.");
-          break;
-        case error.UNKNOWN_ERROR:
-        default:
-          console.log("알 수 없는 위치 정보 오류가 발생했습니다.");
-          break;
-      }
-    };
-    
-    // 위치 정보 접근 성공 처리 함수
-    const handleLocationSuccess = (position) => {
-      const { latitude, longitude } = position.coords;
-      console.log(`현재 위치 가져오기 성공: 위도(${latitude}), 경도(${longitude})`);
-      setUserLocation({ lat: latitude, lng: longitude });
-    };
-    
-    // 프로토콜이 http인 경우 보안 제약으로 geolocation API 접근이 제한될 수 있음
-    const isHttpProtocol = typeof window !== 'undefined' && window.location.protocol === 'http:';
-    const isLocalhost = typeof window !== 'undefined' && (
-      window.location.hostname === 'localhost' || 
-      window.location.hostname === '127.0.0.1'
-    );
-    
-    // 로컬호스트는 http에서도 위치 정보 접근 가능
-    if (isHttpProtocol && !isLocalhost) {
-      console.log("HTTP 환경에서는 위치 정보 접근이 제한될 수 있습니다. 기본 위치(송파구)를 사용합니다.");
-      setUserLocation(defaultLocation);
-    } else if (navigator.geolocation) {
-      try {
-        console.log("위치 정보 요청 중...");
-        navigator.geolocation.getCurrentPosition(
-          handleLocationSuccess,
-          handleLocationError,
-          { 
-            enableHighAccuracy: true, 
-            timeout: 10000, 
-            maximumAge: 0 
-          }
-        );
-      } catch (err) {
-        console.error("위치 정보 요청 예외 발생:", err);
-        setUserLocation(defaultLocation);
-      }
-    } else {
-      console.log("이 브라우저에서는 위치 정보 기능을 지원하지 않습니다. 기본 위치(송파구)를 사용합니다.");
-      setUserLocation(defaultLocation);
     }
   }, []);
 
